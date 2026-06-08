@@ -1,5 +1,7 @@
 import Foundation
 import Combine
+import Network
+import Darwin
 
 /// A single message observed on the link (sent or received).
 struct FrameRecord: Identifiable {
@@ -32,20 +34,29 @@ struct FrameRecord: Identifiable {
 final class ScannerClient: NSObject, ObservableObject, URLSessionWebSocketDelegate {
 
     // MARK: Published state
-    @Published var host: String = "192.168.76.1"
+    // Default to the scanner on the routable LAN. Auto-discovery overwrites this;
+    // use 192.168.76.1 when connected directly to the Rigil's own WiFi AP.
+    @Published var host: String = "192.168.9.129"
     @Published var wsPort: String = "8081"
     @Published var httpPort: String = "8080"
 
     @Published private(set) var connected = false
-    @Published private(set) var status = "Idle"
+    @Published var status = "Idle"
     @Published private(set) var frames: [FrameRecord] = []
 
     @Published var httpPath: String = "/"
     @Published private(set) var httpStatus = ""
     @Published private(set) var httpBody: Data? = nil
 
+    // MARK: Discovery state
+    /// Comma-separated /24 prefixes to sweep, in addition to the Mac's own subnets.
+    @Published var scanPrefixes: String = "192.168.8, 192.168.9"
+    @Published var discovering = false
+    @Published var discoveryProgress = ""
+    @Published var discovered: [DiscoveredScanner] = []
+
     // MARK: Private
-    private var session: URLSession!
+    var session: URLSession!   // internal so the discovery extension can reuse it
     private var task: URLSessionWebSocketTask?
     private var pingTimer: Timer?
 

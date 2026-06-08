@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### 2026-06-07
+- **feat:** Auto-discovery — in-app subnet sweep finds the Einstar automatically. TCP-probes `:8081` across the Mac's own subnets plus user-listed `/24` prefixes (ICMP-independent, since the Rigil firewalls ping), then confirms each hit by the `:8080` `application/x-empty` signature. Confirmed devices are auto-selected; one-click Use/Connect from the results list.
 - **chore:** Renamed project/app from `RigilGrab` to `EinStarManager` (target, sources, bundle id, docs).
 - **docs:** Noted EXStar is Windows-only — protocol capture must be done on Windows (Wireshark).
 - **feat:** Initial `EinStarManager` SwiftUI macOS app — connects to the Einstar Rigil 3D scanner over WiFi (WebSocket `:8081` + HTTP `:8080`), keeps the socket alive (ping/pong), sends commands, logs/inspects/saves received frames, and detects STL/OBJ/PLY/PNG/JPEG payloads.

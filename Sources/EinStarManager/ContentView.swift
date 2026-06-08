@@ -40,6 +40,48 @@ struct ContentView: View {
     private var controlColumn: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                GroupBox("Auto-discover Einstar") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            TextField("Subnets (e.g. 192.168.8, 192.168.9)", text: $client.scanPrefixes)
+                                .textFieldStyle(.roundedBorder)
+                            Button {
+                                Task { await client.discover() }
+                            } label: {
+                                if client.discovering {
+                                    ProgressView().controlSize(.small)
+                                } else {
+                                    Text("Scan")
+                                }
+                            }
+                            .disabled(client.discovering)
+                        }
+                        if !client.discoveryProgress.isEmpty {
+                            Text(client.discoveryProgress)
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        ForEach(client.discovered) { dev in
+                            HStack(spacing: 6) {
+                                Image(systemName: dev.confirmed ? "checkmark.seal.fill" : "questionmark.circle")
+                                    .foregroundStyle(dev.confirmed ? .green : .secondary)
+                                Text(dev.ip).font(.system(.body, design: .monospaced))
+                                Text(dev.confirmed ? "Einstar" : ":8081")
+                                    .font(.caption).foregroundStyle(.secondary)
+                                Spacer()
+                                Button("Use") {
+                                    client.host = dev.ip
+                                    client.wsPort = "8081"; client.httpPort = "8080"
+                                }
+                                Button("Connect") {
+                                    client.host = dev.ip
+                                    client.wsPort = "8081"; client.httpPort = "8080"
+                                    client.connect()
+                                }.disabled(!dev.confirmed)
+                            }
+                        }
+                    }.padding(6)
+                }
+
                 GroupBox("Scanner") {
                     VStack(alignment: .leading, spacing: 8) {
                         labeledField("Host", text: $client.host)

@@ -4,9 +4,9 @@ A native **SwiftUI macOS app** for talking to the **Einstar / EinScan Rigil** 3D
 over WiFi and pulling data (STL / OBJ / PLY / images) off it without the official
 EXStar software.
 
-> Status: **0.1.0 — transport working, command protocol being reverse-engineered.**
-> The app connects and drives the scanner's links live; the exact command(s) that
-> trigger an STL/image export are still being discovered (see below).
+> Status: **0.2.0 — transport + auto-discovery working, command protocol being reverse-engineered.**
+> The app finds the scanner on the network, connects, and drives its links live; the
+> exact command(s) that trigger an STL/image export are still being discovered (see below).
 
 ## What we know about the Rigil over WiFi
 
@@ -14,7 +14,7 @@ Established by probing a live Rigil (connected to its WiFi-6 AP):
 
 | Endpoint | Role |
 |----------|------|
-| `192.168.76.1` | The scanner itself (its own AP — gateway + DHCP + DNS). |
+| scanner address | `192.168.76.1` on its **own AP**, or a DHCP address (e.g. `192.168.9.129`) when **joined to your LAN** (routable, no routing conflict). Use **Scan** to find it — it firewalls ICMP, so discovery is by TCP probe of `:8081`, not ping. |
 | `:8081` (WebSocket) | Control/data channel. Sends PING frames; **closes the socket (code 1000) on an unrecognized command.** URLSession auto-pongs, so the link stays alive on its own. Does **not** auto-stream — it waits for the correct app-level command. |
 | `:8080` (HTTP) | Resource server. Plain `GET /` and common paths return an empty `404`; finished files are likely served from specific paths. |
 | `:21`, `:22`, `:443` | FTP / SSH / HTTPS also open (unexplored). |
@@ -41,7 +41,10 @@ open dist/EinStarManager.app
 
 ## Using it
 
-1. **Connect** to the scanner (defaults to `192.168.76.1`, WS `8081`, HTTP `8080`).
+0. **Scan** (Auto-discover panel) to sweep your subnets — add prefixes like
+   `192.168.8, 192.168.9` if the scanner is on a different subnet than the Mac.
+   Confirmed Einstars get a green seal and are auto-selected; hit **Connect**.
+1. Or **Connect** manually (WS `8081`, HTTP `8080`).
 2. **Send a WebSocket command** — pick a candidate or type your own. Watch the frame
    log for a reply vs. a close. (A close means the command was rejected — reconnect
    and try another.)
