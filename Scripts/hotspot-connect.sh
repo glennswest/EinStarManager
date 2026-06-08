@@ -48,7 +48,11 @@ networksetup -ordernetworkservices "${NEWORDER[@]}"
 if [[ -n "$SSID" ]]; then
   echo "==> Joining hotspot '$SSID' on $WIFI_DEV"
   networksetup -setairportpower "$WIFI_DEV" on
-  networksetup -setairportnetwork "$WIFI_DEV" "$SSID" "$PASS"
+  if [[ -n "$PASS" ]]; then
+    networksetup -setairportnetwork "$WIFI_DEV" "$SSID" "$PASS"
+  else
+    networksetup -setairportnetwork "$WIFI_DEV" "$SSID"   # open / saved network
+  fi
   for _ in $(seq 1 25); do
     ip="$(ipconfig getifaddr "$WIFI_DEV" 2>/dev/null || true)"
     [[ "$ip" == 192.168.76.* ]] && break
