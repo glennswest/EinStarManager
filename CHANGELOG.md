@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### 2026-06-08
+- **docs:** Added `PROTOCOL.md` — full reverse-engineered EinScan Rigil WiFi protocol (TCP 5678, framed CBOR control plane + Qt-style data plane). Verified live: handshake, `deviceInfo`, `projectsInfo` (object listing), ping/pong keepalive. Data/file channel format decoded from capture.
+
 ### 2026-06-07
 - **feat:** Auto-discovery — in-app subnet sweep finds the Einstar automatically. TCP-probes `:8081` across the Mac's own subnets plus user-listed `/24` prefixes (ICMP-independent, since the Rigil firewalls ping), then confirms each hit by the `:8080` `application/x-empty` signature. Confirmed devices are auto-selected; one-click Use/Connect from the results list.
 - **chore:** Renamed project/app from `RigilGrab` to `EinStarManager` (target, sources, bundle id, docs).
