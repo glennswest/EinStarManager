@@ -3,7 +3,7 @@
 ## [Unreleased]
 
 ### 2026-06-08
-- **feat:** `Scripts/hotspot-connect.sh` — join the Rigil's WiFi hotspot without it hijacking the default route; keeps Ethernet primary and routes only `192.168.76.0/24` over Wi-Fi so internet stays up.
+- **feat:** `Scripts/hotspot-connect.sh` — one command to join the Rigil hotspot AND keep internet: auto-joins the AP, then a retry loop deletes ONLY the scanner's default route (gw 192.168.76.1) and pins `192.168.76.0/24` to Wi-Fi. Never bulk-deletes routes, so it can't drop the uplink. (This is the sequence the app will perform via a privileged helper.)
 - **feat:** `RigilKit` Swift library — CBOR codec, port-5678 frame codec, and an async `RigilControlClient` (connect, handshake, ping/pong keepalive, `deviceInfo`, `projectsInfo`) with typed `RigilProject`/`RigilDeviceInfo` models.
 - **feat:** App "List objects" panel — lists stored scans (group/name, size, mesh/texture, date) live from the scanner via RigilKit.
 - **feat:** `Scripts/extract-capture.py` — carve project files (preview PNGs, calibration, bins) straight out of a download capture.
