@@ -1,4 +1,4 @@
-# RigilGrab
+# EinStarManager
 
 A native **SwiftUI macOS app** for talking to the **Einstar / EinScan Rigil** 3D scanner
 over WiFi and pulling data (STL / OBJ / PLY / images) off it without the official
@@ -19,10 +19,12 @@ Established by probing a live Rigil (connected to its WiFi-6 AP):
 | `:8080` (HTTP) | Resource server. Plain `GET /` and common paths return an empty `404`; finished files are likely served from specific paths. |
 | `:21`, `:22`, `:443` | FTP / SSH / HTTPS also open (unexplored). |
 
-The application-level command vocabulary on `:8081` is **proprietary**. The reliable
-way to learn it is to packet-capture the official EXStar app once while it pulls a
-scan, then replay those commands here. The app's command console + frame inspector
-let you discover and drive them interactively in the meantime.
+The application-level command vocabulary on `:8081` is **proprietary**. The official
+EXStar software is **Windows-only** (no macOS build yet), so the reliable way to learn
+the protocol is to packet-capture EXStar on a Windows machine (Wireshark, filter
+`ip.addr == 192.168.76.1`) while it pulls a scan, then replay those commands here. The
+app's command console + frame inspector let you discover and drive them interactively
+in the meantime.
 
 ## Build & run
 
@@ -34,7 +36,7 @@ swift run
 
 # Or build a double-clickable .app into dist/
 ./Scripts/make-app.sh
-open dist/RigilGrab.app
+open dist/EinStarManager.app
 ```
 
 ## Using it

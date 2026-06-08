@@ -15,12 +15,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 }
 
 @main
-struct RigilGrabApp: App {
+struct EinStarManagerApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var client = ScannerClient()
 
     var body: some Scene {
-        WindowGroup("RigilGrab — Einstar Rigil over WiFi") {
+        WindowGroup("EinStarManager — Einstar Rigil over WiFi") {
             ContentView()
                 .environmentObject(client)
                 .frame(minWidth: 980, minHeight: 620)

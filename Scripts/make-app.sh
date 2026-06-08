@@ -1,9 +1,9 @@
 #!/bin/bash
-# Build RigilGrab and wrap the executable into a double-clickable macOS .app bundle.
+# Build EinStarManager and wrap the executable into a double-clickable macOS .app bundle.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-APP="RigilGrab"
+APP="EinStarManager"
 VERSION="0.1.0"
 DIST="dist/${APP}.app"
 
@@ -25,7 +25,7 @@ cat > "${DIST}/Contents/Info.plist" <<PLIST
 <dict>
   <key>CFBundleName</key><string>${APP}</string>
   <key>CFBundleDisplayName</key><string>${APP}</string>
-  <key>CFBundleIdentifier</key><string>com.neuralcloud.rigilgrab</string>
+  <key>CFBundleIdentifier</key><string>com.neuralcloud.einstarmanager</string>
   <key>CFBundleVersion</key><string>${VERSION}</string>
   <key>CFBundleShortVersionString</key><string>${VERSION}</string>
   <key>CFBundlePackageType</key><string>APPL</string>

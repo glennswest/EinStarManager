@@ -2,12 +2,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "RigilGrab",
+    name: "EinStarManager",
     platforms: [.macOS(.v13)],
     targets: [
         .executableTarget(
-            name: "RigilGrab",
-            path: "Sources/RigilGrab"
+            name: "EinStarManager",
+            path: "Sources/EinStarManager"
         )
     ]
 )

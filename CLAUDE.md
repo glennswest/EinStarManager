@@ -1,4 +1,4 @@
-# CLAUDE.md — einstar / RigilGrab
+# CLAUDE.md — einstar / EinStarManager
 
 Native SwiftUI macOS app to pull data (STL/OBJ/PLY/images) from the **Einstar /
 EinScan Rigil** 3D scanner over WiFi, replacing/augmenting the official EXStar app.
@@ -8,13 +8,13 @@ EinScan Rigil** 3D scanner over WiFi, replacing/augmenting the official EXStar a
 - Version locations: `Scripts/make-app.sh` (`VERSION`), `README.md` badge line, `CHANGELOG.md`.
 
 ## Project layout
-- `Package.swift` — SPM executable target `RigilGrab`, macOS 13+.
-- `Sources/RigilGrab/`
-  - `RigilGrabApp.swift` — `@main` App + AppDelegate (sets `.regular` activation so `swift run` shows a real window).
+- `Package.swift` — SPM executable target `EinStarManager`, macOS 13+.
+- `Sources/EinStarManager/`
+  - `EinStarManagerApp.swift` — `@main` App + AppDelegate (sets `.regular` activation so `swift run` shows a real window).
   - `ScannerClient.swift` — `ObservableObject` transport: WebSocket (`:8081`) + HTTP (`:8080`), ping heartbeat, frame log.
   - `ContentView.swift` — UI: connect panel, command console, HTTP fetch, frame table + detail/save.
   - `PayloadKind.swift` — payload classification (STL/OBJ/PLY/PNG/JPEG/JSON/text/binary) + hex helpers.
-- `Scripts/make-app.sh` — wrap release binary into `dist/RigilGrab.app` (ad-hoc signed).
+- `Scripts/make-app.sh` — wrap release binary into `dist/EinStarManager.app` (ad-hoc signed).
 
 ## Reverse-engineered Rigil facts (live device)
 - Scanner is its **own WiFi-6 AP**; it is `192.168.76.1` (gateway+DHCP+DNS).
