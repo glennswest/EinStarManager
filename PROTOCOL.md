@@ -4,20 +4,28 @@ Reverse-engineered from a live `EinScan Rigil Lite` (serial `EinScanRigilMMB-BF0
 appVersion `1.3.1-alpha.19`, protocolVersion `1.8`) and a 1.18 GB Wireshark capture of
 the Windows **EXStar** client talking to it.
 
-> Status: **control plane fully working & verified live** (handshake, deviceInfo,
-> projectsInfo, ping/pong). **Data plane (file download) format decoded** from capture,
-> but the live session-gating for a standalone download is still being confirmed — the
-> reference capture is a *scanning* session, which only reads project thumbnails.
+> Status: **control plane verified live** (handshake, `deviceInfo`, `projectsInfo` object
+> listing, ping/pong). **Three-channel architecture mapped** (control + data + ZeroMQ event
+> bus). **Download/file format fully decoded** and files (previews, calibration) extracted
+> straight from the capture; the live trigger to start a standalone download is identified
+> but still gated by a project-selection step.
 
 ## Transport overview
 
-The scanner exposes several services. The one EXStar uses is **TCP port 5678**.
+EXStar uses **three** concurrent TCP connections, opened back-to-back at session start:
+
+| Port | Conn | Proto | Role |
+|------|------|-------|------|
+| **5678** | #1 control | framed CBOR | handshake, RPC (`deviceInfo`, `projectsInfo`), ping/pong, telemetry |
+| **5678** | #2 data | framed Qt-serialized | **file/download stream** — opens idle, the scanner pushes a project here once triggered on the control conn |
+| **6789** | #3 events | **ZeroMQ ZMTP 3.0 PUB/SUB** | scanner=PUB, client=SUB to topic **`TXCommData`** (event/notification bus) |
+
+Other services (not used by EXStar):
 
 | Port | Proto | Role |
 |------|-------|------|
-| **5678** | custom framed CBOR / binary | **EXStar control + data plane** (this doc) |
 | 8081 | WebSocket (`Server: webserver`) | web/mobile control channel (pings, closes on bad cmd) |
-| 8080 | HTTP | resource server; bare GETs → `404 application/x-empty` (used as the discovery signature) |
+| 8080 | HTTP | resource server; bare GETs → `404 application/x-empty` (the discovery signature) |
 | 21 / 22 / 443 | FTP / SSH / HTTPS | present, unexplored |
 
 The Rigil runs either as its **own WiFi-6 AP** (`192.168.76.1`, gateway/DHCP/DNS) or
@@ -149,39 +157,64 @@ Response body:
 
 This call is **verified working live** — it is how you enumerate objects to download.
 
-## 4. Data / file channel (envelope `0x02`)
+## 4. Download trigger (control channel)
 
-Used to read files out of a project directory. The body is **not** CBOR — it is a small
-Qt-`QDataStream`-style structure, **little-endian**, with **UTF-16LE** strings:
+The data connection (#2) is opened idle at session start and sends nothing. The scanner
+begins streaming a project onto it ~35 ms after the client sends this **env-`0x01`** message
+on the **control** connection (right after `deviceInfo`):
 
-```
-+--------+----------+-----------------------------+--------------------+
-| opcode | innerLen | QString path                | trailing params    |
-| u32 LE | u32 LE   | u32 LE byteLen + UTF-16LE    | (u32 id, flags...) |
-+--------+----------+-----------------------------+--------------------+
+```jsonc
+{ "frameId": 6, "messageId": 770, "param": {} }
 ```
 
-- `opcode` observed: `0x33` (51) and `0x34` (52) — request variants (e.g. stat vs read).
-- `path` is the absolute device path, e.g.
-  `/storage/<uuid>/TX3App/projectgroup/Group_1/preview.png`.
+`param` is empty — the scanner streams the **currently-selected/active project** (in the
+reference capture, the most recent one, `part1`). Replaying this verbatim against a freshly
+connected scanner does **not** start a stream, so an additional selection/state step
+(likely set via the device UI or an earlier session message) is still required to fully
+reproduce a standalone download. Listing (`projectsInfo`) is unaffected and works live.
 
-The scanner streams the file back on envelope `0x02`. A project directory contains, among
-others:
+## 5. Data / file channel (envelope `0x02`)
+
+The body is a Qt-`QDataStream`-style structure, **little-endian**, with **UTF-16LE** path
+strings. Two request opcodes:
+
+```
++--------+----------+--------------------------+--------------------+
+| opcode | innerLen | QString path (UTF-16LE)  | trailing params    |
+| u32 LE | u32 LE   | u32 LE byteLen + chars   | (offset, length…)  |
++--------+----------+--------------------------+--------------------+
+```
+
+- `op 0x33` (51) — open/stat a file (get size).
+- `op 0x34` (52) — **ranged read**: trailing params carry a byte offset + length, so large
+  files come down in many chunks (e.g. the 523 MB `FrameCloud_0.dat`).
+
+### Response payload — Qt `QVariantMap`
+
+Small files arrive bundled as a serialized `QVariantMap`: **keys are filenames**, values are
+the file bytes (`QByteArray`) or metadata (`QString`), each as `u32 byteLen (BE)` + data.
+One observed bundle contained `calibTime`, `laser`, `LeftCCF.txt`, `RightCCF.txt`,
+`left25.bin`, `parallel7.bin`, `right25.bin`. A project directory holds:
 
 | file | contents |
 |------|----------|
-| `preview.png` | thumbnail image |
-| `LeftCCF.txt` / `RightCCF.txt` | camera calibration (focal length, principal point, distortion `kc`, `T`, `R`, std error) |
-| `left25.bin`, `*.bin` | binary scan/frame data |
-| `calibTime`, … | metadata |
+| `preview.png` | 1440×1080 RGBA thumbnail |
+| `LeftCCF.txt` / `RightCCF.txt` / `TexCCF.txt` / `*Long*.txt` | camera calibration (focal length, principal point, distortion `kc`, `T`, `R`, std error) |
+| `left25.bin` / `right25.bin` / `parallel7.bin` | structured-light pattern / frame data |
+| `cloud.bin`, `frameN/cloud.bin` | per-frame point clouds |
+| `FrameCloud_0.dat` | fused point cloud (the bulk of the data) |
 
-The bulk of a project download is the scanner streaming these files back-to-back (the
-523 MB `part1` project is mostly `*.bin` scan data).
+### Extracting files from a capture
 
-> **Open item:** on a fresh connection the scanner accepts the handshake but does not yet
-> answer `0x02` file requests in isolation — EXStar issues them while a project is "open"
-> in an active session. A dedicated capture of EXStar **transferring/exporting a saved
-> project** (rather than live-scanning) is needed to pin the exact precondition.
+Because the download is plaintext, a full project can be carved straight out of a pcap —
+no live scanner needed. `Scripts/extract-capture.py` reassembles the data stream, carves
+`preview.png`s, and writes out every `QVariantMap`-bundled file. (The ranged `op 0x34`
+`FrameCloud_0.dat` chunks still need offset-reassembly to rebuild the full point cloud.)
+
+### Object → STL
+
+The Rigil stores raw scan/point-cloud data, not STL. STL/OBJ/PLY are produced by the host
+(EXStar/EinStudio) meshing pipeline from this data.
 
 ## Object → STL
 
@@ -193,10 +226,18 @@ files and run the meshing pipeline, or (b) trigger an on-device export (command 
 ## Quick reference — minimal client flow
 
 ```
-connect(scanner:5678)
+# Listing objects (verified live):
+connect(scanner:5678)                                    # control connection
 send   env 0x01  {cmd:openDeviceRet, connectType:2, protocolVersion:"1.8", ...}
 recv   env 0x01  {deviceName, deviceSerialNumber, ...}
 loop:  on recv {type:ping}  -> send {type:pong, ...}     # keepalive
 send   env 0x07  {funcName:"projectsInfo", id:1, params:{QString:"Hello"}}
 recv   env 0x08  {id:1, ErrorCode:0, result:{ <groups...> }}   # the object list
+
+# Download (observed; trigger gated by project selection):
+connect(scanner:5678)  #2 data conn — leave idle, just read
+connect(scanner:6789)  #3 ZMTP: greeting + READY(Socket-Type=SUB) + SUBSCRIBE "TXCommData"
+send (on control) env 0x07 deviceInfo
+send (on control) env 0x01 {frameId:6, messageId:770, param:{}}   # trigger
+recv (on data conn) env 0x02 framed QVariantMap{ filename: bytes, ... } + ranged chunks
 ```

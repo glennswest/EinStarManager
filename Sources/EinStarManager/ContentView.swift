@@ -98,6 +98,36 @@ struct ContentView: View {
                     }.padding(6)
                 }
 
+                GroupBox("Stored objects (:5678)") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Button {
+                                Task { await client.listObjects() }
+                            } label: {
+                                if client.listingObjects { ProgressView().controlSize(.small) }
+                                else { Text("List objects") }
+                            }.disabled(client.listingObjects)
+                            if !client.objectsStatus.isEmpty {
+                                Text(client.objectsStatus).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                            }
+                        }
+                        ForEach(client.projects) { p in
+                            VStack(alignment: .leading, spacing: 1) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: p.hasMesh ? "cube.fill" : "cube")
+                                        .foregroundStyle(p.hasMesh ? .green : .secondary)
+                                    Text("\(p.group)/\(p.name)").font(.system(.body, design: .monospaced))
+                                    Spacer()
+                                    Text(ByteCountFormatter.string(fromByteCount: Int64(p.size), countStyle: .file))
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                                Text("\(p.dateTime)\(p.hasMesh ? " · mesh" : "")\(p.hasTexture ? " · texture" : "")")
+                                    .font(.caption2).foregroundStyle(.secondary)
+                            }
+                        }
+                    }.padding(6)
+                }
+
                 GroupBox("WebSocket command (:\(client.wsPort))") {
                     VStack(alignment: .leading, spacing: 8) {
                         Picker("Try", selection: $commandText) {

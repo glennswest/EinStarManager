@@ -3,6 +3,12 @@
 ## [Unreleased]
 
 ### 2026-06-08
+- **feat:** `RigilKit` Swift library — CBOR codec, port-5678 frame codec, and an async `RigilControlClient` (connect, handshake, ping/pong keepalive, `deviceInfo`, `projectsInfo`) with typed `RigilProject`/`RigilDeviceInfo` models.
+- **feat:** App "List objects" panel — lists stored scans (group/name, size, mesh/texture, date) live from the scanner via RigilKit.
+- **feat:** `Scripts/extract-capture.py` — carve project files (preview PNGs, calibration, bins) straight out of a download capture.
+- **docs:** PROTOCOL.md expanded to the full three-channel architecture (control + data + ZeroMQ `TXCommData` event bus), the env-0x01 download trigger, and the `QVariantMap` file-bundle/ranged-read data format.
+
+### 2026-06-08
 - **docs:** Added `PROTOCOL.md` — full reverse-engineered EinScan Rigil WiFi protocol (TCP 5678, framed CBOR control plane + Qt-style data plane). Verified live: handshake, `deviceInfo`, `projectsInfo` (object listing), ping/pong keepalive. Data/file channel format decoded from capture.
 
 ### 2026-06-07

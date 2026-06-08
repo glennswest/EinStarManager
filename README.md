@@ -4,9 +4,11 @@ A native **SwiftUI macOS app** for talking to the **Einstar / EinScan Rigil** 3D
 over WiFi and pulling data (STL / OBJ / PLY / images) off it without the official
 EXStar software.
 
-> Status: **0.2.0 — transport + auto-discovery working, command protocol being reverse-engineered.**
-> The app finds the scanner on the network, connects, and drives its links live; the
-> exact command(s) that trigger an STL/image export are still being discovered (see below).
+> Status: **0.3.0 — discovery, control protocol, and live object listing working.**
+> The app finds the scanner, connects over the real EXStar protocol (TCP 5678, `RigilKit`),
+> and **lists stored scans** live. The download/file format is fully decoded (see
+> [PROTOCOL.md](PROTOCOL.md)); the live trigger to start a standalone download is identified
+> but still gated by a project-selection step.
 
 ## What we know about the Rigil over WiFi
 

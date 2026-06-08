@@ -2,6 +2,7 @@ import Foundation
 import Combine
 import Network
 import Darwin
+import RigilKit
 
 /// A single message observed on the link (sent or received).
 struct FrameRecord: Identifiable {
@@ -47,6 +48,11 @@ final class ScannerClient: NSObject, ObservableObject, URLSessionWebSocketDelega
     @Published var httpPath: String = "/"
     @Published private(set) var httpStatus = ""
     @Published private(set) var httpBody: Data? = nil
+
+    // MARK: Stored objects (RigilKit control plane, TCP 5678)
+    @Published private(set) var projects: [RigilProject] = []
+    @Published private(set) var objectsStatus = ""
+    @Published private(set) var listingObjects = false
 
     // MARK: Discovery state
     /// Comma-separated /24 prefixes to sweep, in addition to the Mac's own subnets.
@@ -155,6 +161,29 @@ final class ScannerClient: NSObject, ObservableObject, URLSessionWebSocketDelega
     }
 
     func clearFrames() { frames.removeAll() }
+
+    // MARK: List stored objects via the Rigil control protocol (TCP 5678)
+
+    func listObjects() async {
+        if listingObjects { return }
+        listingObjects = true
+        objectsStatus = "Connecting to \(host):5678…"
+        defer { listingObjects = false }
+        let client = RigilControlClient(hostName: Host.current().localizedName ?? "EinStarManager",
+                                        machineId: "einstarmanager-\(ProcessInfo.processInfo.processIdentifier)")
+        do {
+            try await client.connect(host: host, port: 5678)
+            let hs = try await client.handshake()
+            objectsStatus = "Connected: \(hs.deviceName) (\(hs.serialNumber))"
+            let list = try await client.projects()
+            projects = list.sorted { $0.dateTime > $1.dateTime }
+            objectsStatus = "\(projects.count) object(s) on \(hs.deviceName)"
+            await client.disconnect()
+        } catch {
+            objectsStatus = "Failed: \(error)"
+            await client.disconnect()
+        }
+    }
 
     // MARK: HTTP fetch (:8080)
 
