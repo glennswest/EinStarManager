@@ -1,0 +1,33 @@
+# Secrets and environment
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+credentials/
+
+# IDE and OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Swift / build artifacts
+.build/
+.swiftpm/
+*.xcodeproj/xcuserdata/
+DerivedData/
+dist/
+*.app/
+
+# Logs and temp
+*.log
+tmp/
+temp/
+
+# Captured scanner payloads (may be large)
+captures/
