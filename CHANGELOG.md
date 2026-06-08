@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### 2026-06-08
+- **feat:** In-app scan download — each scan in the Stored-objects panel has a **Download** button: pick a folder, RigilKit connects + fires the trigger, receives the stream, extracts the bundled files + preview via `RigilArchive`, saves them, and shows the preview image inline. The real app now does discover → list scans → download, no scripts.
 - **feat:** RigilKit data plane — `RigilDownloader` (control+data connections, env-0x01 download trigger, `op52` ranged file fetch via `path|start|end`, stream drain) and `RigilArchive` (Swift port of the capture extractor: carves preview PNGs + `QVariantMap`-bundled files). Moves the proven download mechanics out of throwaway scripts into the app's library.
 - **feat:** `Scripts/hotspot-connect.sh` — one command to join the Rigil hotspot AND keep internet: auto-joins the AP, then a retry loop deletes ONLY the scanner's default route (gw 192.168.76.1) and pins `192.168.76.0/24` to Wi-Fi. Never bulk-deletes routes, so it can't drop the uplink. (This is the sequence the app will perform via a privileged helper.)
 - **feat:** `RigilKit` Swift library — CBOR codec, port-5678 frame codec, and an async `RigilControlClient` (connect, handshake, ping/pong keepalive, `deviceInfo`, `projectsInfo`) with typed `RigilProject`/`RigilDeviceInfo` models.

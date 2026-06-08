@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
+import RigilKit
 
 struct ContentView: View {
     @EnvironmentObject var client: ScannerClient
@@ -120,10 +121,23 @@ struct ContentView: View {
                                     Spacer()
                                     Text(ByteCountFormatter.string(fromByteCount: Int64(p.size), countStyle: .file))
                                         .font(.caption).foregroundStyle(.secondary)
+                                    Button("Download") { downloadProject(p) }
+                                        .disabled(client.downloading)
                                 }
                                 Text("\(p.dateTime)\(p.hasMesh ? " · mesh" : "")\(p.hasTexture ? " · texture" : "")")
                                     .font(.caption2).foregroundStyle(.secondary)
                             }
+                        }
+                        if client.downloading || !client.downloadStatus.isEmpty {
+                            HStack(spacing: 6) {
+                                if client.downloading { ProgressView().controlSize(.small) }
+                                Text(client.downloadStatus).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                            }
+                        }
+                        if let png = client.lastPreviewPNG, let img = NSImage(data: png) {
+                            Image(nsImage: img).resizable().scaledToFit()
+                                .frame(maxHeight: 160)
+                                .overlay(RoundedRectangle(cornerRadius: 4).stroke(.quaternary))
                         }
                     }.padding(6)
                 }
@@ -225,6 +239,20 @@ struct ContentView: View {
         } else {
             Text("Select a frame to inspect / save").foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    // MARK: Download a scan to a chosen folder
+
+    private func downloadProject(_ p: RigilProject) {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.prompt = "Download Here"
+        panel.message = "Choose a folder to save \(p.group)/\(p.name)"
+        if panel.runModal() == .OK, let folder = panel.url {
+            Task { await client.download(p, to: folder) }
         }
     }
 

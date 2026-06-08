@@ -54,6 +54,11 @@ final class ScannerClient: NSObject, ObservableObject, URLSessionWebSocketDelega
     @Published private(set) var objectsStatus = ""
     @Published private(set) var listingObjects = false
 
+    // MARK: Download
+    @Published private(set) var downloadStatus = ""
+    @Published private(set) var downloading = false
+    @Published private(set) var lastPreviewPNG: Data? = nil
+
     // MARK: Discovery state
     /// Comma-separated /24 prefixes to sweep, in addition to the Mac's own subnets.
     @Published var scanPrefixes: String = "192.168.8, 192.168.9"
@@ -161,6 +166,42 @@ final class ScannerClient: NSObject, ObservableObject, URLSessionWebSocketDelega
     }
 
     func clearFrames() { frames.removeAll() }
+
+    // MARK: Download a scan via the Rigil data protocol (TCP 5678)
+
+    func download(_ project: RigilProject, to folder: URL) async {
+        if downloading { return }
+        downloading = true
+        lastPreviewPNG = nil
+        downloadStatus = "Connecting to \(host)…"
+        defer { downloading = false }
+        let dl = RigilDownloader(host: host)
+        do {
+            try await dl.start()                       // handshake + trigger
+            downloadStatus = "Connected — receiving…"
+            // The scanner streams the active project's bundle after the trigger.
+            let raw = try await dl.drainStream(seconds: 20) { p in
+                Task { @MainActor in self.downloadStatus = "Received \(p.bytes) bytes…" }
+            }
+            await dl.stop()
+
+            let files = RigilArchive.extractFiles(raw)
+            let pngs = RigilArchive.carvePNGs(raw)
+            let dest = folder.appendingPathComponent("\(project.group)_\(project.name)", isDirectory: true)
+            try? FileManager.default.createDirectory(at: dest, withIntermediateDirectories: true)
+            for f in files {
+                try? f.data.write(to: dest.appendingPathComponent(f.name.replacingOccurrences(of: "/", with: "_")))
+            }
+            for (i, p) in pngs.enumerated() {
+                try? p.write(to: dest.appendingPathComponent("preview_\(i).png"))
+            }
+            lastPreviewPNG = pngs.first
+            downloadStatus = "Saved \(files.count) files + \(pngs.count) preview(s) (\(raw.count) bytes) → \(dest.lastPathComponent)"
+        } catch {
+            await dl.stop()
+            downloadStatus = "Failed: \(error)"
+        }
+    }
 
     // MARK: List stored objects via the Rigil control protocol (TCP 5678)
 
