@@ -35,7 +35,10 @@ SSID="${1:-}"; PASS="${2:-}"
 
 # --- 1. Keep Ethernet primary so the default route never moves to the hotspot ---
 # Build a new service order with Ethernet first, Wi-Fi second, everything else after.
-mapfile -t CURRENT < <(networksetup -listnetworkserviceorder | sed -n 's/^([0-9][0-9]*) //p')
+CURRENT=()
+while IFS= read -r line; do
+  [[ -n "$line" ]] && CURRENT+=("$line")
+done < <(networksetup -listnetworkserviceorder | sed -n 's/^([0-9][0-9]*) //p')
 NEWORDER=("$ETH_SERVICE" "$WIFI_SERVICE")
 for s in "${CURRENT[@]}"; do
   [[ "$s" == "$ETH_SERVICE" || "$s" == "$WIFI_SERVICE" ]] && continue
