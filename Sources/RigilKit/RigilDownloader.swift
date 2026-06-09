@@ -22,9 +22,10 @@ public actor RigilDownloader {
     private var reqSeq: UInt32 = 1_000_000
     private let machineId: String
     private let hostName: String
+    private let requireWiFi: Bool
 
-    public init(host: String, hostName: String = "RigilKit", machineId: String = "rigilkit-app") {
-        self.host = host; self.hostName = hostName; self.machineId = machineId
+    public init(host: String, requireWiFi: Bool = false, hostName: String = "RigilKit", machineId: String = "rigilkit-app") {
+        self.host = host; self.requireWiFi = requireWiFi; self.hostName = hostName; self.machineId = machineId
     }
 
     private static let CHUNK = 512 * 1024 - 1   // 0..524287 like EXStar
@@ -137,7 +138,9 @@ public actor RigilDownloader {
     // MARK: Low-level NWConnection
 
     private func dial() async throws -> NWConnection {
-        let nw = NWConnection(host: .init(host), port: 5678, using: .tcp)
+        let params = NWParameters.tcp
+        if requireWiFi { params.requiredInterfaceType = .wifi }
+        let nw = NWConnection(host: .init(host), port: 5678, using: params)
         try await withCheckedThrowingContinuation { (c: CheckedContinuation<Void, Error>) in
             let once = OneShot()
             nw.stateUpdateHandler = { st in

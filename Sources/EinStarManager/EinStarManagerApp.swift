@@ -18,11 +18,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 struct EinStarManagerApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var client = ScannerClient()
+    @StateObject private var wifi = RigilWiFi()
 
     var body: some Scene {
         WindowGroup("EinStarManager — Einstar Rigil over WiFi") {
             ContentView()
                 .environmentObject(client)
+                .environmentObject(wifi)
                 .frame(minWidth: 980, minHeight: 620)
         }
         .windowStyle(.titleBar)

@@ -30,10 +30,12 @@ public actor RigilControlClient {
 
     // MARK: Connect
 
-    public func connect(host: String, port: UInt16 = 5678) async throws {
+    public func connect(host: String, port: UInt16 = 5678, requireWiFi: Bool = false) async throws {
+        let params = NWParameters.tcp
+        if requireWiFi { params.requiredInterfaceType = .wifi }   // pin to Wi-Fi, ignore default route
         let nw = NWConnection(host: .init(host),
                               port: .init(rawValue: port)!,
-                              using: .tcp)
+                              using: params)
         self.conn = nw
         try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
             let guarded = OneShot()

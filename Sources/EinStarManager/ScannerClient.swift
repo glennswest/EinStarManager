@@ -2,6 +2,7 @@ import Foundation
 import Combine
 import Network
 import Darwin
+import AppKit
 import RigilKit
 
 /// A single message observed on the link (sent or received).
@@ -58,6 +59,12 @@ final class ScannerClient: NSObject, ObservableObject, URLSessionWebSocketDelega
     @Published private(set) var downloadStatus = ""
     @Published private(set) var downloading = false
     @Published private(set) var lastPreviewPNG: Data? = nil
+
+    /// When connected over the scanner's Wi-Fi hotspot, pin sockets to Wi-Fi so they
+    /// don't depend on (or fight) the default route.
+    @Published var useWiFiBinding = false
+    /// Per-scan preview thumbnails (project id → PNG bytes).
+    @Published private(set) var thumbnails: [String: Data] = [:]
 
     // MARK: Discovery state
     /// Comma-separated /24 prefixes to sweep, in addition to the Mac's own subnets.
@@ -175,7 +182,7 @@ final class ScannerClient: NSObject, ObservableObject, URLSessionWebSocketDelega
         lastPreviewPNG = nil
         downloadStatus = "Connecting to \(host)…"
         defer { downloading = false }
-        let dl = RigilDownloader(host: host)
+        let dl = RigilDownloader(host: host, requireWiFi: useWiFiBinding)
         do {
             try await dl.start()                       // handshake + trigger
             downloadStatus = "Connected — receiving…"
@@ -203,6 +210,30 @@ final class ScannerClient: NSObject, ObservableObject, URLSessionWebSocketDelega
         }
     }
 
+    // MARK: Grab preview thumbnails for all listed scans (op52 fetch of preview.png)
+
+    func grabThumbnails() async {
+        guard !projects.isEmpty else { objectsStatus = "List objects first."; return }
+        downloading = true; defer { downloading = false }
+        downloadStatus = "Connecting for thumbnails…"
+        let dl = RigilDownloader(host: host, requireWiFi: useWiFiBinding)
+        do {
+            try await dl.start()
+            for p in projects {
+                downloadStatus = "Fetching thumbnail for \(p.group)/\(p.name)…"
+                if let png = try? await dl.fetchFile(path: p.path + "/preview.png"),
+                   !png.isEmpty, NSImage(data: png) != nil {
+                    thumbnails[p.id] = png
+                }
+            }
+            await dl.stop()
+            downloadStatus = "Got \(thumbnails.count) thumbnail(s)."
+        } catch {
+            await dl.stop()
+            downloadStatus = "Thumbnails failed: \(error)"
+        }
+    }
+
     // MARK: List stored objects via the Rigil control protocol (TCP 5678)
 
     func listObjects() async {
@@ -213,7 +244,7 @@ final class ScannerClient: NSObject, ObservableObject, URLSessionWebSocketDelega
         let client = RigilControlClient(hostName: Host.current().localizedName ?? "EinStarManager",
                                         machineId: "einstarmanager-\(ProcessInfo.processInfo.processIdentifier)")
         do {
-            try await client.connect(host: host, port: 5678)
+            try await client.connect(host: host, port: 5678, requireWiFi: useWiFiBinding)
             let hs = try await client.handshake()
             objectsStatus = "Connected: \(hs.deviceName) (\(hs.serialNumber))"
             let list = try await client.projects()

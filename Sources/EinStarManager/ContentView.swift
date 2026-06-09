@@ -5,6 +5,7 @@ import RigilKit
 
 struct ContentView: View {
     @EnvironmentObject var client: ScannerClient
+    @EnvironmentObject var wifi: RigilWiFi
     @State private var commandText = "{\"cmd\":\"start\"}"
     @State private var selected: FrameRecord.ID?
 
@@ -41,6 +42,35 @@ struct ContentView: View {
     private var controlColumn: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                GroupBox("Scanner Hotspot (Wi-Fi)") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "wifi")
+                            Text(wifi.interfaceName).font(.system(.caption, design: .monospaced))
+                            if let ssid = wifi.currentSSID {
+                                Text("· \(ssid)").font(.caption).foregroundStyle(.secondary)
+                            } else {
+                                Text("· not joined").font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                        if !wifi.adapterIsFree {
+                            Text("⚠︎ Wi-Fi is on another network — won't hijack it.")
+                                .font(.caption2).foregroundStyle(.orange)
+                        }
+                        HStack {
+                            Button("Find & Connect Scanner") { connectHotspot() }
+                                .disabled(client.downloading || client.listingObjects)
+                            Button("Grab Thumbnails") { Task { await client.grabThumbnails() } }
+                                .disabled(client.projects.isEmpty || client.downloading)
+                        }
+                        if !wifi.status.isEmpty {
+                            Text(wifi.status).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                        }
+                        Text("Scanner traffic is pinned to Wi-Fi; internet stays on Ethernet (no routing changes).")
+                            .font(.caption2).foregroundStyle(.secondary)
+                    }.padding(6)
+                }
+
                 GroupBox("Auto-discover Einstar") {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
@@ -113,19 +143,23 @@ struct ContentView: View {
                             }
                         }
                         ForEach(client.projects) { p in
-                            VStack(alignment: .leading, spacing: 1) {
-                                HStack(spacing: 6) {
-                                    Image(systemName: p.hasMesh ? "cube.fill" : "cube")
-                                        .foregroundStyle(p.hasMesh ? .green : .secondary)
-                                    Text("\(p.group)/\(p.name)").font(.system(.body, design: .monospaced))
-                                    Spacer()
-                                    Text(ByteCountFormatter.string(fromByteCount: Int64(p.size), countStyle: .file))
-                                        .font(.caption).foregroundStyle(.secondary)
-                                    Button("Download") { downloadProject(p) }
-                                        .disabled(client.downloading)
+                            HStack(spacing: 8) {
+                                if let png = client.thumbnails[p.id], let img = NSImage(data: png) {
+                                    Image(nsImage: img).resizable().scaledToFill()
+                                        .frame(width: 56, height: 42).clipped()
+                                        .overlay(RoundedRectangle(cornerRadius: 3).stroke(.quaternary))
+                                } else {
+                                    RoundedRectangle(cornerRadius: 3).fill(.quaternary)
+                                        .frame(width: 56, height: 42)
+                                        .overlay(Image(systemName: p.hasMesh ? "cube.fill" : "cube").foregroundStyle(.secondary))
                                 }
-                                Text("\(p.dateTime)\(p.hasMesh ? " · mesh" : "")\(p.hasTexture ? " · texture" : "")")
-                                    .font(.caption2).foregroundStyle(.secondary)
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text("\(p.group)/\(p.name)").font(.system(.body, design: .monospaced))
+                                    Text("\(ByteCountFormatter.string(fromByteCount: Int64(p.size), countStyle: .file)) · \(p.dateTime)\(p.hasMesh ? " · mesh" : "")")
+                                        .font(.caption2).foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Button("Download") { downloadProject(p) }.disabled(client.downloading)
                             }
                         }
                         if client.downloading || !client.downloadStatus.isEmpty {
@@ -239,6 +273,23 @@ struct ContentView: View {
         } else {
             Text("Select a frame to inspect / save").foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    // MARK: One-tap hotspot connect → list → thumbnails
+
+    private func connectHotspot() {
+        wifi.requestLocationIfNeeded()
+        Task {
+            do {
+                try await wifi.joinScanner()
+                client.useWiFiBinding = true
+                client.host = "192.168.76.1"
+                await client.listObjects()
+                await client.grabThumbnails()
+            } catch {
+                wifi.note(error.localizedDescription)
+            }
         }
     }
 

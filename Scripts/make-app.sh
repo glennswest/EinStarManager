@@ -4,7 +4,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 APP="EinStarManager"
-VERSION="0.4.0"
+VERSION="0.5.0"
 DIST="dist/${APP}.app"
 
 echo "==> Building release binary"
@@ -34,6 +34,10 @@ cat > "${DIST}/Contents/Info.plist" <<PLIST
   <key>NSHighResolutionCapable</key><true/>
   <key>NSAppTransportSecurity</key>
   <dict><key>NSAllowsArbitraryLoads</key><true/></dict>
+  <key>NSLocationWhenInUseUsageDescription</key>
+  <string>Location access is required by macOS to scan for the EinScan Rigil's Wi-Fi hotspot.</string>
+  <key>NSLocationUsageDescription</key>
+  <string>Location access is required by macOS to scan for the EinScan Rigil's Wi-Fi hotspot.</string>
 </dict>
 </plist>
 PLIST

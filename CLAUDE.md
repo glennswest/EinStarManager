@@ -4,7 +4,7 @@ Native SwiftUI macOS app to pull data (STL/OBJ/PLY/images) from the **Einstar /
 EinScan Rigil** 3D scanner over WiFi, replacing/augmenting the official EXStar app.
 
 ## Version
-- Current: **0.4.0** (pre-1.0; discovery + control protocol + live scan listing + in-app download UI)
+- Current: **0.5.0** (pre-1.0; in-app CoreWLAN hotspot connect + Wi-Fi-pinned sockets + scan listing + thumbnails)
 - Version locations: `Scripts/make-app.sh` (`VERSION`), `README.md` badge line, `CHANGELOG.md`.
 
 ## Project layout
