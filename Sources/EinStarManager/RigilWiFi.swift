@@ -65,6 +65,17 @@ final class RigilWiFi: NSObject, ObservableObject, CLLocationManagerDelegate {
     /// over an adapter that's on some other network.
     func joinScanner() async throws {
         guard let iface else { throw Err.noAdapter }
+        // Power the adapter on if it's off (CoreWLAN can't scan/associate while off).
+        if !iface.powerOn() {
+            status = "Turning Wi-Fi on…"
+            try iface.setPower(true)
+            for _ in 0..<10 {
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                if iface.powerOn() { break }
+            }
+            refresh()
+        }
+        guard iface.powerOn() else { throw Err.powerFailed }
         if let ssid = currentSSID, ssid.hasPrefix(Self.hotspotPrefix) {
             status = "Already on \(ssid)"; refresh(); return
         }
@@ -88,12 +99,13 @@ final class RigilWiFi: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
 
     enum Err: LocalizedError {
-        case noAdapter, adapterBusy(String), notFound
+        case noAdapter, adapterBusy(String), notFound, powerFailed
         var errorDescription: String? {
             switch self {
             case .noAdapter: return "No Wi-Fi adapter found."
             case .adapterBusy(let s): return "Wi-Fi is on '\(s)' — not hijacking it. Disconnect it first."
             case .notFound: return "No EinScanRigil hotspot found in range (is the scanner in hotspot mode? is Location permission granted?)."
+            case .powerFailed: return "Couldn't power on the Wi-Fi adapter."
             }
         }
     }

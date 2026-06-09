@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### 2026-06-08
+- **fix:** RigilWiFi now powers the Wi-Fi adapter on (`setPower`) before scanning/joining — clicking Connect with Wi-Fi off did nothing before.
 - **feat:** In-app Wi-Fi hotspot connect (no shell) — `RigilWiFi` (CoreWLAN) finds the Wi-Fi adapter, checks it's free (won't hijack another network), scans for the `EinScanRigil…` hotspot, and joins it. Scanner sockets are pinned to Wi-Fi (`requiredInterfaceType = .wifi`) so traffic rides Wi-Fi while the default route / internet stays on Ethernet — no routing changes. One-tap "Find & Connect Scanner" then lists scans and grabs preview thumbnails, shown per-scan in the UI.
 - **chore:** make-app.sh adds Location usage strings (macOS requires Location permission for Wi-Fi scanning).
 - **feat:** In-app scan download — each scan in the Stored-objects panel has a **Download** button: pick a folder, RigilKit connects + fires the trigger, receives the stream, extracts the bundled files + preview via `RigilArchive`, saves them, and shows the preview image inline. The real app now does discover → list scans → download, no scripts.
